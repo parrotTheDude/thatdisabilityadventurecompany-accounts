@@ -131,10 +131,10 @@ export default function CreateUserPage() {
       });
 
       // ✅ Store success message in sessionStorage
-      sessionStorage.setItem(
-        "newUserMessage",
-        JSON.stringify({ name: formData.name, email: formData.email })
-      );
+    sessionStorage.setItem(
+      "newUserMessage",
+      JSON.stringify({ name: formData.name, email: formData.email })
+    );
 
       router.push("/users"); // ✅ Redirect after creation
     } catch (err) {

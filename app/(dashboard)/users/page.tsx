@@ -135,7 +135,9 @@ export default function UsersPage() {
   useEffect(() => {
     if (!users.length) return; // ✅ Prevent running when users aren't loaded
   
-    let searchedUsers = users; // ✅ Start with the full list
+    let searchedUsers = users.filter((user) =>
+      canManageUser(currentUser?.user_type || "", user.user_type) // ✅ Filter by hierarchy
+    );
   
     if (search) {
       searchedUsers = searchedUsers.filter((user) =>
@@ -315,7 +317,7 @@ export default function UsersPage() {
 }
 
 const canManageUser = (currentUserType: string, targetUserType: string) => {
-  const hierarchy = ["admin", "superadmin", "master"]; // ✅ Correct order of hierarchy
+  const hierarchy = ["admin", "superadmin", "master"]; // ✅ Ensure correct hierarchy order
 
   return hierarchy.indexOf(currentUserType) >= hierarchy.indexOf(targetUserType); // ✅ Allow managing same-level users
 };
