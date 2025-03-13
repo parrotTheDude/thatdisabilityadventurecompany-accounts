@@ -4,21 +4,19 @@ import "../globals.css";
 
 export default function PublicLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      <body className="bg-white text-gray-900">
-        <Header /> {/* 🔹 Logo in the top-left */}
-        <main className="flex items-center justify-center min-h-screen p-6">
-          {children}
-        </main>
-      </body>
-    </html>
+    <div className="bg-white text-gray-900 min-h-screen flex flex-col">
+      <Header />
+      <main className="flex flex-1 items-center justify-center p-6">
+        {children}
+      </main>
+    </div>
   );
 }
 
-// 🔹 Header Component (Logo in Top-Left)
+// 🔹 Header Component (Fixed at the Top)
 function Header() {
   return (
-    <header className="bg-white shadow-md py-4 px-6">
+    <header className="bg-white shadow-md py-4 px-6 w-full">
       <div className="flex items-center">
         <img
           src="https://thatdisabilityadventurecompany.com.au/icons/logo.webp"

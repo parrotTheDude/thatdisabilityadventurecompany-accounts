@@ -12,12 +12,13 @@ export default function LoginPage() {
 
   const handleLogin = async () => {
     try {
-      const res = await axios.post(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/auth/login`,
-        { email, password }
-      );
+      const res = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/login`, {
+        email,
+        password,
+      });
 
-      localStorage.setItem("token", res.data.token);
+      localStorage.setItem("token", res.data.token); // ✅ Always store in localStorage
+
       router.push("/dashboard");
     } catch (err) {
       setError("Invalid credentials");
@@ -25,23 +26,30 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center">
-      <h1 className="text-2xl mb-4">Admin Login</h1>
+    <div className="bg-white shadow-lg rounded-lg p-8 w-96">
+      <h1 className="text-2xl font-bold mb-6 text-center">Admin Login</h1>
+
       <input
         type="email"
         placeholder="Email"
         onChange={(e) => setEmail(e.target.value)}
-        className="border p-2 mb-2 w-64"
+        className="border p-2 mb-4 w-full rounded-md"
       />
+
       <input
         type="password"
         placeholder="Password"
         onChange={(e) => setPassword(e.target.value)}
-        className="border p-2 mb-2 w-64"
+        className="border p-2 mb-4 w-full rounded-md"
       />
-      {error && <p className="text-red-500">{error}</p>}
-      <button onClick={handleLogin} className="bg-blue-500 text-white p-2 w-64">
-        Login
+
+      {error && <p className="text-red-500 text-center mt-3">{error}</p>}
+
+      <button
+        onClick={handleLogin}
+        className="bg-blue-500 text-white p-2 w-full rounded-md hover:bg-blue-600 transition mt-4"
+      >
+        Log In
       </button>
     </div>
   );
