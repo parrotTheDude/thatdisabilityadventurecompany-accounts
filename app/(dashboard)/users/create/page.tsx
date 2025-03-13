@@ -126,9 +126,15 @@ export default function CreateUserPage() {
 
     try {
       const token = localStorage.getItem("token");
-      await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/api/users`, formData, {
+      const res = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/api/users`, formData, {
         headers: { Authorization: `Bearer ${token}` },
       });
+
+      // ✅ Store success message in sessionStorage
+      sessionStorage.setItem(
+        "newUserMessage",
+        JSON.stringify({ name: formData.name, email: formData.email })
+      );
 
       router.push("/users"); // ✅ Redirect after creation
     } catch (err) {

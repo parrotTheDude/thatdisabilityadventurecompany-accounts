@@ -26,8 +26,41 @@ export default function UsersPage() {
   const [selectedUserType, setSelectedUserType] = useState<string | null>(null);
   const [selectedGender, setSelectedGender] = useState<string | null>(null);
   const [visibleCount, setVisibleCount] = useState(20);
+  const [currentUser, setCurrentUser] = useState<{ id: number; user_type: string } | null>(null);
+  const [successMessage, setSuccessMessage] = useState<{ name: string; email: string } | null>(
+    null
+  );
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearch(e.target.value);
+  };
+  
+  const handleUserTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setSelectedUserType(e.target.value || null);
+  };
+  
+  const handleGenderChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setSelectedGender(e.target.value || null);
+  };
 
-  // ✅ API Call Optimized with useCallback
+  const fetchCurrentUser = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/users/me`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      // ✅ Redirect if not master, superadmin, or admin
+      if (!["master", "superadmin", "admin"].includes(res.data.user_type)) {
+        router.push("/dashboard"); // Redirect unauthorized users
+      }
+
+      setCurrentUser(res.data);
+    } catch (err) {
+      setError("Unauthorized. Redirecting...");
+      router.push("/dashboard");
+    }
+  };
+
   const fetchUsers = useCallback(async () => {
     try {
       setLoading(true);
@@ -35,16 +68,25 @@ export default function UsersPage() {
       const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/users`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-
-      setUsers(res.data);
-      setFilteredUsers(res.data);
-      setDisplayedUsers(res.data.slice(0, 20));
+  
+      if (!currentUser) return; // ✅ Ensure `currentUser` is set before filtering
+  
+      // ✅ Hide users that are above the current user's hierarchy
+      const accessibleUsers = res.data.filter((user: User) =>
+        canManageUser(currentUser.user_type, user.user_type)
+      );
+  
+      console.log("👀 Visible Users:", accessibleUsers); // ✅ Debug log
+  
+      setUsers(accessibleUsers);
+      setFilteredUsers(accessibleUsers);
+      setDisplayedUsers(accessibleUsers.slice(0, 20));
     } catch (err) {
       setError("Failed to load users.");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [currentUser]);
 
   const fetchUserTypes = useCallback(async () => {
     try {
@@ -71,33 +113,50 @@ export default function UsersPage() {
   }, []);
 
   useEffect(() => {
-    fetchUsers();
-    fetchUserTypes();
-    fetchGenders();
-  }, [fetchUsers, fetchUserTypes, fetchGenders]);
+    fetchCurrentUser();
+  }, []);
+
+  useEffect(() => {
+    if (currentUser) {
+      fetchUsers();
+      fetchUserTypes();
+      fetchGenders();
+    }
+  
+    // ✅ Retrieve and remove the success message from sessionStorage
+    const message = sessionStorage.getItem("newUserMessage");
+    if (message) {
+      setSuccessMessage(JSON.parse(message));
+      sessionStorage.removeItem("newUserMessage"); // ✅ Remove after displaying
+    }
+  }, [currentUser]);
 
   // ✅ Filter users by search, user type, and gender
   useEffect(() => {
-    let filtered = users;
-
+    if (!users.length) return; // ✅ Prevent running when users aren't loaded
+  
+    let searchedUsers = users; // ✅ Start with the full list
+  
     if (search) {
-      filtered = filtered.filter((user) =>
+      searchedUsers = searchedUsers.filter((user) =>
         `${user.name} ${user.last_name} ${user.email} ${user.user_type}`
           .toLowerCase()
           .includes(search.toLowerCase())
       );
     }
-
+  
     if (selectedUserType) {
-      filtered = filtered.filter((user) => user.user_type === selectedUserType);
+      searchedUsers = searchedUsers.filter((user) => user.user_type === selectedUserType);
     }
-
+  
     if (selectedGender) {
-      filtered = filtered.filter((user) => user.gender === selectedGender);
+      searchedUsers = searchedUsers.filter((user) => user.gender === selectedGender);
     }
-
-    setFilteredUsers(filtered);
-    setDisplayedUsers(filtered.slice(0, visibleCount)); // ✅ Update displayed users based on filters
+  
+    console.log("🔍 Filtered Users:", searchedUsers); // ✅ Debug log
+  
+    setFilteredUsers(searchedUsers);
+    setDisplayedUsers(searchedUsers.slice(0, visibleCount)); // ✅ Update displayed users
   }, [search, selectedUserType, selectedGender, users, visibleCount]);
 
   // ✅ Capitalize first letter of labels
@@ -142,6 +201,13 @@ export default function UsersPage() {
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
       <h1 className="text-3xl font-bold mb-6 text-gray-800">User Management</h1>
+
+      {/* ✅ Success Message */}
+      {successMessage && (
+        <p className="text-green-600 text-center mb-4 bg-green-100 p-2 rounded-md">
+          ✔ New User Added: {successMessage.name} ({successMessage.email})
+        </p>
+      )}
 
       {/* Search Bar */}
       <div className="flex mb-4">
@@ -217,7 +283,11 @@ export default function UsersPage() {
             </thead>
             <tbody>
               {displayedUsers.map((user) => (
-                <tr key={user.id} className="border-t cursor-pointer hover:bg-gray-100 transition" onClick={() => router.push(`/users/${user.id}`)}>
+                <tr
+                  key={user.id}
+                  className="border-t transition cursor-pointer hover:bg-gray-100"
+                  onClick={() => router.push(`/users/${user.id}`)}
+                >
                   <td className="p-3">{capitalize(user.name)}</td>
                   <td className="p-3">{capitalize(user.last_name)}</td>
                   <td className="p-3">{user.email}</td>
@@ -243,3 +313,9 @@ export default function UsersPage() {
     </div>
   );
 }
+
+const canManageUser = (currentUserType: string, targetUserType: string) => {
+  const hierarchy = ["admin", "superadmin", "master"]; // ✅ Correct order of hierarchy
+
+  return hierarchy.indexOf(currentUserType) >= hierarchy.indexOf(targetUserType); // ✅ Allow managing same-level users
+};
