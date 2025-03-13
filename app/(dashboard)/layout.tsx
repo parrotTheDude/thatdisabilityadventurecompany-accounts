@@ -13,36 +13,49 @@ interface User {
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
-    const token = localStorage.getItem("token"); // ✅ Only check localStorage
+    const token = localStorage.getItem("token");
+    console.log("🔍 Checking token before API call:", token);
 
     if (!token) {
+      console.log("❌ No token found, redirecting to login.");
+      setIsAuthenticated(false);
       router.push("/auth/login");
       return;
     }
-
-    setIsAuthenticated(true);
 
     axios
       .get(`${process.env.NEXT_PUBLIC_API_URL}/api/users/me`, {
         headers: { Authorization: `Bearer ${token}` },
       })
-      .then((res) => setUser(res.data))
-      .catch(() => {
+      .then((res) => {
+        console.log("✅ User authenticated:", res.data);
+        setUser(res.data);
+        setIsAuthenticated(true);
+      })
+      .catch((err) => {
+        console.log("❌ Invalid token, logging out:", err);
         localStorage.removeItem("token");
+        setIsAuthenticated(false);
         router.push("/auth/login");
       });
   }, []);
 
+  if (isAuthenticated === null) {
+    return <main className="flex items-center justify-center min-h-screen"><p>Loading...</p></main>;
+  }
+
   return isAuthenticated ? (
-    <div className="flex h-screen">
-      <Sidebar />
-      <div className="flex-1 flex flex-col">
-        <Header user={user} />
-        <main className="flex-1 p-6 overflow-auto">{children}</main>
+    <div className="flex h-screen flex-col">
+      <Header user={user} />
+      <div className="flex flex-1">
+        <Sidebar />
+        <div className="flex-1 flex flex-col">
+          <main className="flex-1 p-6 overflow-auto">{children}</main>
+        </div>
       </div>
     </div>
   ) : (
@@ -52,34 +65,20 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   );
 }
 
-// 🔹 Sidebar Component (Admin Panel)
-function Sidebar() {
-  return (
-    <aside className="bg-gray-900 text-white w-64 flex flex-col p-6">
-      <div className="flex items-center mb-6">
-        <img
-          src="https://thatdisabilityadventurecompany.com.au/icons/whiteLogo.webp"
-          alt="TDAC Logo"
-          className="h-18 w-auto"
-        />
-      </div>
-      <nav className="space-y-4">
-        <NavItem href="/dashboard" label="Dashboard" />
-        <NavItem href="/dashboard/users" label="Users" />
-        <NavItem href="/dashboard/subscriptions" label="Subscriptions" />
-        <NavItem href="/dashboard/emails" label="Emails" />
-      </nav>
-    </aside>
-  );
-}
-
-// 🔹 Header Component (User Dropdown in Top Right)
+// 🔹 Updated Header (Now Full-Width & Includes Logo)
 function Header({ user }: { user: { name: string } | null }) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
   return (
-    <header className="bg-white shadow-md py-4 px-6 flex justify-between items-center relative">
-      <div></div>
+    <header className="bg-white shadow-md py-4 px-6 w-full flex justify-between items-center">
+      {/* Logo Inside Header */}
+      <img
+        src="https://thatdisabilityadventurecompany.com.au/icons/logo.webp"
+        alt="TDAC Logo"
+        className="h-16 w-auto"
+      />
+
+      {/* User Dropdown */}
       <div className="relative">
         <button
           onClick={() => setDropdownOpen(!dropdownOpen)}
@@ -114,11 +113,26 @@ function Header({ user }: { user: { name: string } | null }) {
   );
 }
 
-// 🔹 Sidebar Navigation Links
-function NavItem({ href, label }: { href: string; label: string }) {
+// 🔹 Sidebar Component (Now White & Thinner)
+function Sidebar() {
   return (
-    <a href={href} className="block p-3 rounded-lg hover:bg-gray-700 transition">
-      {label}
+    <aside className="bg-white text-black w-48 flex flex-col p-4 border-r border-gray-300">
+      <nav className="space-y-2">
+        <NavItem href="/dashboard" label="Dashboard" icon="/icons/home.svg" />
+        <NavItem href="/users" label="Users" icon="/icons/team.svg" />
+        <NavItem href="/subscriptions" label="Subscriptions" icon="/icons/ticket.svg" />
+        <NavItem href="/emails" label="Emails" icon="/icons/email.svg" />
+      </nav>
+    </aside>
+  );
+}
+
+// 🔹 Sidebar Navigation Links
+function NavItem({ href, label, icon }: { href: string; label: string; icon: string }) {
+  return (
+    <a href={href} className="flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-100 transition">
+      <img src={icon} alt={`${label} Icon`} className="w-5 h-5" />
+      <span>{label}</span>
     </a>
   );
 }
